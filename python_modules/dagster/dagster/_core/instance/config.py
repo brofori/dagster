@@ -398,6 +398,7 @@ def dagster_instance_config_schema() -> Mapping[str, Field]:
                 "local_startup_timeout": Field(int, is_required=False),
                 "reload_timeout": Field(int, is_required=False),
                 "wait_for_local_processes_on_shutdown": Field(bool, is_required=False),
+                "grpc_watch_interval": Field(int, is_required=False),
             },
             is_required=False,
         ),

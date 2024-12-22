@@ -5,7 +5,7 @@ import dagster._check as check
 from dagster._core.errors import DagsterUserCodeUnreachableError
 from dagster._grpc.client import DagsterGrpcClient
 
-WATCH_INTERVAL = 1
+DEFAULT_GRPC_WATCH_INTERVAL = 1
 REQUEST_TIMEOUT = 2
 MAX_RECONNECT_ATTEMPTS = 10
 
@@ -52,7 +52,7 @@ def watch_grpc_server_thread(
     check.callable_param(on_reconnected, "on_reconnected")
     check.callable_param(on_updated, "on_updated")
     check.callable_param(on_error, "on_error")
-    watch_interval = check.opt_numeric_param(watch_interval, "watch_interval", WATCH_INTERVAL)
+    watch_interval = check.opt_numeric_param(watch_interval, "watch_interval", DEFAULT_GRPC_WATCH_INTERVAL)
     max_reconnect_attempts = check.opt_int_param(
         max_reconnect_attempts, "max_reconnect_attempts", MAX_RECONNECT_ATTEMPTS
     )

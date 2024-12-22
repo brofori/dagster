@@ -744,6 +744,7 @@ class WorkspaceProcessContext(IWorkspaceProcessContext):
                     ),
                 )
             ),
+            watch_interval=self._instance.code_server_grpc_watch_interval,
         )
         self._watch_thread_shutdown_events[location_name] = shutdown_event
         self._watch_threads[location_name] = watch_thread
