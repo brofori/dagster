@@ -17,20 +17,24 @@ from unittest.mock import MagicMock, patch
 import pytest
 from dagster import (
     AssetCheckResult,
+    AssetDep,
     AssetIn,
     AssetKey,
     AssetOut,
     AssetsDefinition,
+    AssetSpec,
     BackfillPolicy,
     DagsterInstance,
     DagsterRunStatus,
     DailyPartitionsDefinition,
     HourlyPartitionsDefinition,
     LastPartitionMapping,
+    MaterializeResult,
     Nothing,
     PartitionKeyRange,
     PartitionsDefinition,
     RunRequest,
+    StaticPartitionMapping,
     StaticPartitionsDefinition,
     TimeWindowPartitionMapping,
     WeeklyPartitionsDefinition,
@@ -55,6 +59,7 @@ from dagster._core.execution.asset_backfill import (
     AssetBackfillData,
     AssetBackfillIterationResult,
     AssetBackfillStatus,
+    backfill_is_complete,
     execute_asset_backfill_iteration_inner,
     get_canceling_asset_backfill_iteration_data,
 )
@@ -397,7 +402,7 @@ def test_materializations_outside_of_backfill():
         instance=instance,
         asset_graph=asset_graph,
         assets_by_repo_name=assets_by_repo_name,
-        backfill_data=make_backfill_data("all", asset_graph, instance, None),
+        backfill_data=make_backfill_data("all", asset_graph, instance, None),  # pyright: ignore[reportArgumentType]
         fail_asset_partitions=set(),
     )
 
@@ -561,7 +566,9 @@ def get_asset_graph(
     ) as get_builtin_partition_mapping_types:
         get_builtin_partition_mapping_types.return_value = tuple(
             assets_def.infer_partition_mapping(
-                dep_key, assets_defs_by_key[dep_key].partitions_def
+                next(iter(assets_def.keys)),
+                dep_key,
+                assets_defs_by_key[dep_key].specs_by_key[dep_key].partitions_def,
             ).__class__
             for assets in assets_by_repo_name.values()
             for assets_def in assets
@@ -618,7 +625,12 @@ def run_backfill_to_completion(
         evaluation_time=backfill_data.backfill_start_datetime,
     )
 
-    while not backfill_data.is_complete():
+    while not backfill_is_complete(
+        backfill_id=backfill_id,
+        backfill_data=backfill_data,
+        instance=instance,
+        logger=logging.getLogger("fake_logger"),
+    ):
         iteration_count += 1
 
         result1 = execute_asset_backfill_iteration_consume_generator(
@@ -628,7 +640,6 @@ def run_backfill_to_completion(
             instance=instance,
         )
 
-        # iteration_count += 1
         assert result1.backfill_data != backfill_data
 
         instance_queryer = _get_instance_queryer(
@@ -954,19 +965,19 @@ def test_asset_backfill_status_counts():
     counts = completed_backfill_data.get_backfill_status_per_asset_key(asset_graph)
 
     assert counts[0].asset_key == unpartitioned_upstream_of_partitioned.key
-    assert counts[0].backfill_status == AssetBackfillStatus.MATERIALIZED
+    assert counts[0].backfill_status == AssetBackfillStatus.MATERIALIZED  # pyright: ignore[reportAttributeAccessIssue]
 
     assert counts[1].asset_key == upstream_daily_partitioned_asset.key
-    assert counts[1].partitions_counts_by_status[AssetBackfillStatus.MATERIALIZED] == 0
-    assert counts[1].partitions_counts_by_status[AssetBackfillStatus.FAILED] == 1
-    assert counts[1].partitions_counts_by_status[AssetBackfillStatus.IN_PROGRESS] == 0
-    assert counts[1].num_targeted_partitions == 1
+    assert counts[1].partitions_counts_by_status[AssetBackfillStatus.MATERIALIZED] == 0  # pyright: ignore[reportAttributeAccessIssue]
+    assert counts[1].partitions_counts_by_status[AssetBackfillStatus.FAILED] == 1  # pyright: ignore[reportAttributeAccessIssue]
+    assert counts[1].partitions_counts_by_status[AssetBackfillStatus.IN_PROGRESS] == 0  # pyright: ignore[reportAttributeAccessIssue]
+    assert counts[1].num_targeted_partitions == 1  # pyright: ignore[reportAttributeAccessIssue]
 
     assert counts[2].asset_key == downstream_weekly_partitioned_asset.key
-    assert counts[2].partitions_counts_by_status[AssetBackfillStatus.MATERIALIZED] == 0
-    assert counts[2].partitions_counts_by_status[AssetBackfillStatus.FAILED] == 1
-    assert counts[2].partitions_counts_by_status[AssetBackfillStatus.IN_PROGRESS] == 0
-    assert counts[2].num_targeted_partitions == 1
+    assert counts[2].partitions_counts_by_status[AssetBackfillStatus.MATERIALIZED] == 0  # pyright: ignore[reportAttributeAccessIssue]
+    assert counts[2].partitions_counts_by_status[AssetBackfillStatus.FAILED] == 1  # pyright: ignore[reportAttributeAccessIssue]
+    assert counts[2].partitions_counts_by_status[AssetBackfillStatus.IN_PROGRESS] == 0  # pyright: ignore[reportAttributeAccessIssue]
+    assert counts[2].num_targeted_partitions == 1  # pyright: ignore[reportAttributeAccessIssue]
 
 
 def test_asset_backfill_status_counts_with_reexecution():
@@ -1006,9 +1017,9 @@ def test_asset_backfill_status_counts_with_reexecution():
 
     counts = backfill_data.get_backfill_status_per_asset_key(asset_graph)
     assert counts[0].asset_key == upstream_fail.key
-    assert counts[0].partitions_counts_by_status[AssetBackfillStatus.MATERIALIZED] == 0
-    assert counts[0].partitions_counts_by_status[AssetBackfillStatus.FAILED] == 1
-    assert counts[0].partitions_counts_by_status[AssetBackfillStatus.IN_PROGRESS] == 0
+    assert counts[0].partitions_counts_by_status[AssetBackfillStatus.MATERIALIZED] == 0  # pyright: ignore[reportAttributeAccessIssue]
+    assert counts[0].partitions_counts_by_status[AssetBackfillStatus.FAILED] == 1  # pyright: ignore[reportAttributeAccessIssue]
+    assert counts[0].partitions_counts_by_status[AssetBackfillStatus.IN_PROGRESS] == 0  # pyright: ignore[reportAttributeAccessIssue]
 
     materialize(
         [upstream_success],
@@ -1022,9 +1033,9 @@ def test_asset_backfill_status_counts_with_reexecution():
     )
     counts = backfill_data.get_backfill_status_per_asset_key(asset_graph)
     assert counts[0].asset_key == upstream_fail.key
-    assert counts[0].partitions_counts_by_status[AssetBackfillStatus.MATERIALIZED] == 1
-    assert counts[0].partitions_counts_by_status[AssetBackfillStatus.FAILED] == 0
-    assert counts[0].partitions_counts_by_status[AssetBackfillStatus.IN_PROGRESS] == 0
+    assert counts[0].partitions_counts_by_status[AssetBackfillStatus.MATERIALIZED] == 1  # pyright: ignore[reportAttributeAccessIssue]
+    assert counts[0].partitions_counts_by_status[AssetBackfillStatus.FAILED] == 0  # pyright: ignore[reportAttributeAccessIssue]
+    assert counts[0].partitions_counts_by_status[AssetBackfillStatus.IN_PROGRESS] == 0  # pyright: ignore[reportAttributeAccessIssue]
 
 
 def test_asset_backfill_selects_only_existent_partitions():
@@ -1649,7 +1660,7 @@ def test_asset_backfill_unpartitioned_root_turned_to_partitioned():
     repo_with_partitioned_root = {"repo": [first_partitioned, second]}
     assert asset_backfill_data.get_target_root_partitions_subset(
         get_asset_graph(repo_with_partitioned_root)
-    ).get_partition_keys() == ["2024-01-01"]
+    ).get_partition_keys() == ["2024-01-01"]  # pyright: ignore[reportOptionalMemberAccess]
 
 
 def test_multi_asset_internal_deps_asset_backfill():
@@ -1678,6 +1689,56 @@ def test_multi_asset_internal_deps_asset_backfill():
     assert AssetKeyPartitionKey(AssetKey("a"), "1") in backfill_data.requested_subset
     assert AssetKeyPartitionKey(AssetKey("b"), "1") in backfill_data.requested_subset
     assert AssetKeyPartitionKey(AssetKey("c"), "1") in backfill_data.requested_subset
+
+
+def test_multi_asset_internal_deps_different_partitions_asset_backfill() -> None:
+    @multi_asset(
+        specs=[
+            AssetSpec(
+                "asset1", partitions_def=StaticPartitionsDefinition(["a", "b"]), skippable=True
+            ),
+            AssetSpec(
+                "asset2",
+                partitions_def=StaticPartitionsDefinition(["1"]),
+                deps=[
+                    AssetDep(
+                        "asset1",
+                        partition_mapping=StaticPartitionMapping({"a": {"1"}, "b": {"1"}}),
+                    )
+                ],
+                skippable=True,
+            ),
+        ],
+        can_subset=True,
+    )
+    def my_multi_asset(context):
+        for asset_key in context.selected_asset_keys:
+            yield MaterializeResult(asset_key=asset_key)
+
+    instance = DagsterInstance.ephemeral()
+    repo_dict = {"repo": [my_multi_asset]}
+    asset_graph = get_asset_graph(repo_dict)
+    current_time = create_datetime(2024, 1, 9, 0, 0, 0)
+    asset_backfill_data = AssetBackfillData.from_asset_graph_subset(
+        asset_graph_subset=AssetGraphSubset.all(
+            asset_graph, dynamic_partitions_store=MagicMock(), current_time=current_time
+        ),
+        backfill_start_timestamp=current_time.timestamp(),
+        dynamic_partitions_store=MagicMock(),
+    )
+    backfill_data_after_iter1 = _single_backfill_iteration(
+        "fake_id", asset_backfill_data, asset_graph, instance, repo_dict
+    )
+    after_iter1_requested_subset = backfill_data_after_iter1.requested_subset
+    assert AssetKeyPartitionKey(AssetKey("asset1"), "a") in after_iter1_requested_subset
+    assert AssetKeyPartitionKey(AssetKey("asset1"), "b") in after_iter1_requested_subset
+    assert AssetKeyPartitionKey(AssetKey("asset2"), "1") not in after_iter1_requested_subset
+
+    backfill_data_after_iter2 = _single_backfill_iteration(
+        "fake_id", backfill_data_after_iter1, asset_graph, instance, repo_dict
+    )
+    after_iter2_requested_subset = backfill_data_after_iter2.requested_subset
+    assert AssetKeyPartitionKey(AssetKey("asset2"), "1") in after_iter2_requested_subset
 
 
 def test_multi_asset_internal_and_external_deps_asset_backfill() -> None:

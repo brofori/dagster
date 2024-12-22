@@ -5,6 +5,9 @@ export enum FeatureFlag {
   flagDisableAutoLoadDefaults = 'flagDisableAutoLoadDefaults',
   flagLegacyRunsPage = 'flagLegacyRunsPage',
   flagAssetSelectionSyntax = 'flagAssetSelectionSyntax',
+  flagRunSelectionSyntax = 'flagRunSelectionSyntax',
+  flagAssetSelectionWorker = 'flagAssetSelectionWorker',
+  flagOpSelectionSyntax = 'flagOpSelectionSyntax',
 
   // Flags for tests
   __TestFlagDefaultNone = '__TestFlagDefaultNone',

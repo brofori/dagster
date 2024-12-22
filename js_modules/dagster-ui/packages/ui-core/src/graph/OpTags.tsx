@@ -62,6 +62,7 @@ import gitlab from './kindtag-images/tool-gitlab-color.svg';
 import go from './kindtag-images/tool-go-color.svg';
 import google from './kindtag-images/tool-google-color.svg';
 import googlecloud from './kindtag-images/tool-googlecloud-color.svg';
+import googledrive from './kindtag-images/tool-googledrive-color.svg';
 import googlesheets from './kindtag-images/tool-googlesheets-color.svg';
 import graphql from './kindtag-images/tool-graphql-color.svg';
 import greatexpectations from './kindtag-images/tool-greatexpectations-color.svg';
@@ -73,6 +74,7 @@ import hightouch from './kindtag-images/tool-hightouch-color.svg';
 import hudi from './kindtag-images/tool-hudi-color.svg';
 import huggingface from './kindtag-images/tool-huggingface-color.svg';
 import iceberg from './kindtag-images/tool-iceberg-color.svg';
+import icechunk from './kindtag-images/tool-icechunk-color.svg';
 import impala from './kindtag-images/tool-impala-color.svg';
 import instagram from './kindtag-images/tool-instagram-color.svg';
 import java from './kindtag-images/tool-java-color.svg';
@@ -247,6 +249,7 @@ export type KnownTagType =
   | 'powerbi'
   | 'gcp'
   | 'googlecloud'
+  | 'googledrive'
   | 'looker'
   | 'tableau'
   | 'segment'
@@ -311,6 +314,7 @@ export type KnownTagType =
   | 'hashicorp'
   | 'hudi'
   | 'iceberg'
+  | 'icechunk'
   | 'instagram'
   | 'lakefs'
   | 'linkedin'
@@ -578,6 +582,10 @@ export const KNOWN_TAGS: Record<KnownTagType, KnownTag> = {
     icon: googlecloud,
     content: 'Google Cloud',
   },
+  googledrive: {
+    icon: googledrive,
+    content: 'Google Drive',
+  },
   looker: {
     icon: looker,
     content: 'Looker',
@@ -840,6 +848,10 @@ export const KNOWN_TAGS: Record<KnownTagType, KnownTag> = {
   iceberg: {
     icon: iceberg,
     content: 'Iceberg',
+  },
+  icechunk: {
+    icon: icechunk,
+    content: 'Icechunk',
   },
   instagram: {
     icon: instagram,

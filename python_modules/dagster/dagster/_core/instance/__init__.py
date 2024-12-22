@@ -71,11 +71,14 @@ from dagster._core.storage.dagster_run import (
 from dagster._core.storage.tags import (
     ASSET_PARTITION_RANGE_END_TAG,
     ASSET_PARTITION_RANGE_START_TAG,
+    BACKFILL_ID_TAG,
+    BACKFILL_TAGS,
     PARENT_RUN_ID_TAG,
     PARTITION_NAME_TAG,
     RESUME_RETRY_TAG,
     ROOT_RUN_ID_TAG,
-    TAGS_TO_OMIT_ON_RETRY,
+    RUN_FAILURE_REASON_TAG,
+    TAGS_TO_MAYBE_OMIT_ON_RETRY,
     WILL_RETRY_TAG,
 )
 from dagster._serdes import ConfigurableClass
@@ -488,13 +491,6 @@ class DagsterInstance(DynamicPartitionsStore):
                 " run worker will be marked as failed, but will not be resumed.",
             )
 
-        if self.run_retries_enabled:
-            check.invariant(
-                self.event_log_storage.supports_event_consumer_queries(),
-                "Run retries are enabled, but the configured event log storage does not support"
-                " them. Consider switching to Postgres or Mysql.",
-            )
-
         # Used for batched event handling
         self._event_buffer: Dict[str, List[EventLogEntry]] = defaultdict(list)
 
@@ -827,6 +823,9 @@ class DagsterInstance(DynamicPartitionsStore):
         if self._settings and settings_key in self._settings:
             return self._settings.get(settings_key)
         return {}
+
+    def get_backfill_settings(self) -> Mapping[str, Any]:
+        return self.get_settings("backfills")
 
     def get_scheduler_settings(self) -> Mapping[str, Any]:
         return self.get_settings("schedules")
@@ -1640,6 +1639,7 @@ class DagsterInstance(DynamicPartitionsStore):
         run_config: Optional[Mapping[str, Any]] = None,
         use_parent_run_tags: bool = False,
     ) -> DagsterRun:
+        from dagster._core.execution.backfill import BulkActionStatus
         from dagster._core.execution.plan.resume_retry import ReexecutionStrategy
         from dagster._core.execution.plan.state import KnownExecutionState
         from dagster._core.remote_representation import CodeLocation, RemoteJob
@@ -1657,15 +1657,27 @@ class DagsterInstance(DynamicPartitionsStore):
         parent_run_id = parent_run.run_id
 
         # these can differ from remote_job.tags if tags were added at launch time
-        parent_run_tags = (
-            {key: val for key, val in parent_run.tags.items() if key not in TAGS_TO_OMIT_ON_RETRY}
-            if use_parent_run_tags
-            else {}
-        )
+        parent_run_tags_to_include = {}
+        if use_parent_run_tags:
+            parent_run_tags_to_include = {
+                key: val
+                for key, val in parent_run.tags.items()
+                if key not in TAGS_TO_MAYBE_OMIT_ON_RETRY
+            }
+            # condition to determine whether to include BACKFILL_ID_TAG, PARENT_BACKFILL_ID_TAG,
+            # ROOT_BACKFILL_ID_TAG on retried run
+            if parent_run.tags.get(BACKFILL_ID_TAG) is not None:
+                # if the run was part of a backfill and the backfill is complete, we do not want the
+                # retry to be considered part of the backfill, so remove all backfill-related tags
+                backfill = self.get_backfill(parent_run.tags[BACKFILL_ID_TAG])
+                if backfill and backfill.status == BulkActionStatus.REQUESTED:
+                    for tag in BACKFILL_TAGS:
+                        if parent_run.tags.get(tag) is not None:
+                            parent_run_tags_to_include[tag] = parent_run.tags[tag]
 
         tags = merge_dicts(
             remote_job.tags,
-            parent_run_tags,
+            parent_run_tags_to_include,
             extra_tags or {},
             {
                 PARENT_RUN_ID_TAG: parent_run_id,
@@ -2435,6 +2447,8 @@ class DagsterInstance(DynamicPartitionsStore):
             event (EventLogEntry): The event to handle.
             batch_metadata (Optional[DagsterEventBatchMetadata]): Metadata for batch writing.
         """
+        from dagster._core.events import RunFailureReason
+
         if batch_metadata is None or not _is_batch_writing_enabled():
             events = [event]
         else:
@@ -2476,9 +2490,18 @@ class DagsterInstance(DynamicPartitionsStore):
                 if run and event.get_dagster_event().is_run_failure and self.run_retries_enabled:
                     # Note that this tag is only applied to runs that fail. Successful runs will not
                     # have a WILL_RETRY_TAG tag.
+                    run_failure_reason = (
+                        RunFailureReason(run.tags.get(RUN_FAILURE_REASON_TAG))
+                        if run.tags.get(RUN_FAILURE_REASON_TAG)
+                        else None
+                    )
                     self.add_run_tags(
                         run_id,
-                        {WILL_RETRY_TAG: str(auto_reexecution_should_retry_run(self, run)).lower()},
+                        {
+                            WILL_RETRY_TAG: str(
+                                auto_reexecution_should_retry_run(self, run, run_failure_reason)
+                            ).lower()
+                        },
                     )
             for sub in self._subscribers[run_id]:
                 sub(event)
