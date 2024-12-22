@@ -767,7 +767,7 @@ class WorkspaceProcessContext(IWorkspaceProcessContext):
                     port=endpoint.port,
                     socket=endpoint.socket,
                     host=endpoint.host,
-                    heartbeat=False,
+                    heartbeat=True,
                     watch_server=False,
                     grpc_server_registry=self._grpc_server_registry,
                     instance=self._instance,
