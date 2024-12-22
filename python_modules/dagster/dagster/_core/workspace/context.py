@@ -744,6 +744,7 @@ class WorkspaceProcessContext(IWorkspaceProcessContext):
                     ),
                 )
             ),
+            watch_interval=self._instance.code_server_grpc_watch_interval,
         )
         self._watch_thread_shutdown_events[location_name] = shutdown_event
         self._watch_threads[location_name] = watch_thread
@@ -766,7 +767,7 @@ class WorkspaceProcessContext(IWorkspaceProcessContext):
                     port=endpoint.port,
                     socket=endpoint.socket,
                     host=endpoint.host,
-                    heartbeat=True,
+                    heartbeat=False,
                     watch_server=False,
                     grpc_server_registry=self._grpc_server_registry,
                     instance=self._instance,

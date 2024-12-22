@@ -125,6 +125,7 @@ run_retries:
 
 code_servers:
   local_startup_timeout: 360
+  grpc_watch_interval: 1
 
 secrets:
   my_secret:

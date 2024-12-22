@@ -907,6 +907,13 @@ class DagsterInstance(DynamicPartitionsStore):
         return self.code_server_settings.get(
             "reload_timeout", DEFAULT_LOCAL_CODE_SERVER_STARTUP_TIMEOUT
         )
+    
+    @property
+    def code_server_grpc_watch_interval(self) -> int:
+        from dagster._grpc.server_watcher import DEFAULT_GRPC_WATCH_INTERVAL
+        return self.code_server_settings.get(
+            "grpc_watch_interval", DEFAULT_GRPC_WATCH_INTERVAL
+        )
 
     @property
     def wait_for_local_code_server_processes_on_shutdown(self) -> bool:
