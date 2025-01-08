@@ -47,10 +47,10 @@ THREAD_CHECK_INTERVAL = 5
 
 HEARTBEAT_CHECK_INTERVAL = 60
 
-RELOAD_WORKSPACE_INTERVAL = 60
+RELOAD_WORKSPACE_INTERVAL = 3600
 
 # Number of seconds the workspace can fail to refresh before restarting the daemon.
-DEFAULT_WORKSPACE_FRESHNESS_TOLERANCE = 300
+DEFAULT_WORKSPACE_FRESHNESS_TOLERANCE = 3600 + 300 # TODO: change to 3600 + 300
 
 # Amount of time that a local code server spun up by the daemon will keep running
 # after it is no longer receiving any heartbeat pings - for this duration there may be

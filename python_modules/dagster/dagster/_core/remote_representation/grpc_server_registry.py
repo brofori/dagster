@@ -137,6 +137,7 @@ class GrpcServerRegistry(AbstractContextManager):
         self, code_location_origin: ManagedGrpcPythonEnvCodeLocationOrigin
     ) -> GrpcServerEndpoint:
         check.inst_param(code_location_origin, "code_location_origin", CodeLocationOrigin)
+        print(f"code_location_origin: {code_location_origin}")
         with self._lock:
             origin_id = code_location_origin.get_id()
             if origin_id in self._active_entries:

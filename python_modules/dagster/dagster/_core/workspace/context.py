@@ -761,6 +761,7 @@ class WorkspaceProcessContext(IWorkspaceProcessContext):
                     if reload
                     else self._grpc_server_registry.get_grpc_endpoint(origin)
                 )
+                print("loading location")
                 location = GrpcServerCodeLocation(
                     origin=origin,
                     server_id=endpoint.server_id,
@@ -848,6 +849,7 @@ class WorkspaceProcessContext(IWorkspaceProcessContext):
             self._workspace_snapshot.code_location_entries[name].origin.shutdown_server()
 
     def refresh_workspace(self) -> None:
+        print("refreshing workspace")
         updated_locations = {
             origin.location_name: self._load_location(origin, reload=False)
             for origin in self._origins
@@ -855,6 +857,7 @@ class WorkspaceProcessContext(IWorkspaceProcessContext):
         self._update_workspace(updated_locations)
 
     def reload_workspace(self) -> None:
+        print("reloading workspace")
         updated_locations = {
             origin.location_name: self._load_location(origin, reload=True)
             for origin in self._origins

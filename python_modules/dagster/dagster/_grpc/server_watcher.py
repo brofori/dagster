@@ -79,7 +79,8 @@ def watch_grpc_server_thread(
                 break
 
             curr = current_server_id()
-
+            from datetime import datetime
+            print(datetime.now().isoformat(), "getting server id - watching for changes", watch_interval)
             new_server_id = client.get_server_id(timeout=REQUEST_TIMEOUT)
             if curr is None:
                 set_server_id(new_server_id)
@@ -87,6 +88,7 @@ def watch_grpc_server_thread(
                 set_server_id(new_server_id)
                 on_updated(location_name, new_server_id)
 
+            print(datetime.now().isoformat(), "getting server id - waiting for", watch_interval)
             shutdown_event.wait(watch_interval)
 
     def reconnect_loop():
@@ -97,6 +99,7 @@ def watch_grpc_server_thread(
                 return
 
             try:
+                print("getting server id - reconnecting")
                 new_server_id = client.get_server_id(timeout=REQUEST_TIMEOUT)
                 if current_server_id() == new_server_id and not has_error():
                     # Intermittent failure, was able to reconnect to the same server

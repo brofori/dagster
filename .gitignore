@@ -175,3 +175,7 @@ scripts/.build
 
 # dbt .user files
 .user.yml
+
+**/**/node_modules/
+**/**/yarn.lock
+examples/mvpr/*
